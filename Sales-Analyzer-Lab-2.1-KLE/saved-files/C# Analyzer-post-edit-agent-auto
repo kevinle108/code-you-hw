@@ -1,0 +1,170 @@
+using System;
+using System.IO;
+using System.Linq;
+using System.Globalization;
+
+// 1. Data Model (Equivalent to a dictionary row structure)
+public record SalesItem(string ProductName, decimal Price, int Quantity);
+
+public class CsvProcessor
+{
+    // C# method equivalent to the Python 'calculate_total_sales' function
+    public static decimal CalculateTotalSales(string filename)
+    {
+        // Use decimal for financial accuracy (Python's float is often imprecise)
+        decimal total = 0.0m;
+
+        try
+        {
+            // Read lines from the file, similar to Python's 'with open...'
+            // We skip the header row (index 0) immediately.
+            var dataLines = File.ReadLines(filename).Skip(1);
+            int rowNum = 1; // header is row 1
+
+            // Process each data line using LINQ
+            foreach (string line in dataLines)
+            {
+                rowNum++;
+
+                if (string.IsNullOrWhiteSpace(line))
+                    continue;
+
+                // Equivalent to line.split(',')
+                string[] columns = line.Split(',');
+
+                if (columns.Length != 3)
+                {
+                    Console.WriteLine($"Skipping malformed row {rowNum}: incorrect column count: {line}");
+                    continue;
+                }
+
+                try
+                {
+                    // Use Parse so invalid numeric data raises exceptions we can report
+                    decimal price = decimal.Parse(columns[1], NumberStyles.Any, CultureInfo.InvariantCulture);
+                    int quantity = int.Parse(columns[2], CultureInfo.InvariantCulture);
+                    total += price * quantity;
+                }
+                catch (FormatException)
+                {
+                    Console.WriteLine($"Value error in row {rowNum}: price or quantity not valid numbers: {line}");
+                    continue;
+                }
+                catch (OverflowException)
+                {
+                    Console.WriteLine($"Value error in row {rowNum}: numeric overflow for price or quantity: {line}");
+                    continue;
+                }
+            }
+        }
+        catch (FileNotFoundException)
+        {
+            // Python equivalent of handling file open failure
+            Console.WriteLine($"Error: The file '{filename}' was not found.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"An unexpected error occurred while processing '{filename}': {ex.Message}");
+        }
+
+        return total;
+    }
+
+    // New: Identify the top-selling product by total revenue (price * quantity)
+    public static (string productName, decimal revenue) TopSellingProduct(string filename)
+    {
+        var totals = new System.Collections.Generic.Dictionary<string, decimal>(System.StringComparer.OrdinalIgnoreCase);
+
+        try
+        {
+            var dataLines = File.ReadLines(filename).Skip(1);
+            int rowNum = 1;
+
+            foreach (string line in dataLines)
+            {
+                rowNum++;
+
+                if (string.IsNullOrWhiteSpace(line))
+                    continue;
+
+                string[] columns = line.Split(',');
+
+                if (columns.Length != 3)
+                {
+                    Console.WriteLine($"Skipping malformed row {rowNum}: incorrect column count: {line}");
+                    continue;
+                }
+
+                try
+                {
+                    string product = columns[0];
+                    decimal price = decimal.Parse(columns[1], NumberStyles.Any, CultureInfo.InvariantCulture);
+                    int quantity = int.Parse(columns[2], CultureInfo.InvariantCulture);
+                    decimal revenue = price * quantity;
+
+                    if (totals.ContainsKey(product))
+                        totals[product] += revenue;
+                    else
+                        totals[product] = revenue;
+                }
+                catch (FormatException)
+                {
+                    Console.WriteLine($"Value error in row {rowNum}: price or quantity not valid numbers: {line}");
+                    continue;
+                }
+                catch (OverflowException)
+                {
+                    Console.WriteLine($"Value error in row {rowNum}: numeric overflow for price or quantity: {line}");
+                    continue;
+                }
+            }
+        }
+        catch (FileNotFoundException)
+        {
+            Console.WriteLine($"Error: The file '{filename}' was not found.");
+            return (string.Empty, 0m);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"An unexpected error occurred while processing '{filename}': {ex.Message}");
+            return (string.Empty, 0m);
+        }
+
+        if (totals.Count == 0)
+            return (string.Empty, 0m);
+
+        var top = totals.Aggregate((l, r) => l.Value >= r.Value ? l : r);
+        return (top.Key, top.Value);
+    }
+
+    // C# Main method equivalent to Python's 'if __name__ == "__main__":' block
+    public static void Main(string[] args)
+    {
+        // Note: For this to run, a file named 'sales_data.csv' must exist
+        // in the output directory (e.g., bin/Debug/net8.0/).
+        string salesDataFile = "sales_data.csv";
+        
+        // Example: Create a dummy file if it doesn't exist for testing
+        if (!File.Exists(salesDataFile))
+        {
+            // You should replace this with a real file in a live environment
+            File.WriteAllText(salesDataFile, "product_name,price,quantity\nLaptop,1200.00,5\nMouse,25.50,10\n");
+        }
+
+        decimal totalSales = CalculateTotalSales(salesDataFile);
+        
+        // Print with currency formatting, equivalent to Python's f-string formatting
+        Console.WriteLine($"Total sales from {salesDataFile}: {totalSales.ToString("C", CultureInfo.CurrentCulture)}");
+        
+        // Call the new TopSellingProduct function and print a clearly formatted result
+        var top = TopSellingProduct(salesDataFile);
+        if (!string.IsNullOrEmpty(top.productName))
+        {
+            Console.WriteLine($"Top-selling product: {top.productName} — Revenue: {top.revenue.ToString(\"C\", CultureInfo.CurrentCulture)}");
+        }
+        else
+        {
+            Console.WriteLine("Top-selling product: N/A (no data)");
+        }
+    }
+}

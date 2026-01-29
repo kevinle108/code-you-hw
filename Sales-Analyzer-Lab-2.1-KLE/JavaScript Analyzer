@@ -1,0 +1,77 @@
+const fs = require('fs');
+const path = require('path');
+
+/**
+ * Calculates the total sales from a CSV file.
+ * Assumes the CSV has 'product_name', 'price', 'quantity' columns.
+ * @param {string} filename - The path to the CSV file.
+ * @returns {number} - The calculated total sales.
+ */
+function calculateTotalSales(filename) {
+  let total = 0.0;
+
+  try {
+    // 1. Read the file synchronously (like Python's 'with open...')
+    // Note: In real-world Node.js, asynchronous fs.readFile is preferred.
+    const fileContent = fs.readFileSync(filename, { encoding: 'utf8' });
+
+    // Split the content into lines. The filter removes empty lines.
+    const lines = fileContent.split('\n').filter(line => line.trim() !== '');
+
+    // Skip the header row (like Python's DictReader automatically does)
+    const dataLines = lines.slice(1);
+
+    // 2. Process each data line
+    for (const line of dataLines) {
+      const columns = line.split(',');
+
+      // Ensure the line has the expected number of columns (3)
+      if (columns.length === 3) {
+        // Parse the values to numbers. JavaScript's '+' operator can cast strings to numbers.
+        // We use parseFloat/parseInt for explicit clarity.
+        const price = parseFloat(columns[1]);
+        const quantity = parseInt(columns[2]);
+
+        // Basic validation for successful parsing
+        if (!isNaN(price) && !isNaN(quantity)) {
+          total += price * quantity;
+        } else {
+          console.warn(`Skipping malformed data in row: ${line}`);
+        }
+      }
+    }
+
+    return total;
+
+  } catch (error) {
+    // Handles file not found or reading errors (like Python's exception handling)
+    if (error.code === 'ENOENT') {
+      console.error(`Error: The file '${filename}' was not found.`);
+    } else {
+      console.error(`An unexpected error occurred: ${error.message}`);
+    }
+    return 0.0; // Return 0 if unable to calculate
+  }
+}
+
+// 3. Execution Block (Equivalent to Python's 'if __name__ == "__main__":')
+function main() {
+  // Define the path to the CSV file
+  const salesDataFile = path.join(__dirname, 'sales_data.csv');
+
+  // --- Mock File Creation (Only for demonstration/testing) ---
+  if (!fs.existsSync(salesDataFile)) {
+    const mockData = "product_name,price,quantity\nLaptop,1200.00,5\nMouse,25.50,10\n";
+    fs.writeFileSync(salesDataFile, mockData);
+    console.log(`Created mock file: ${salesDataFile}`);
+  }
+  // --------------------------------------------------------
+
+  const totalSales = calculateTotalSales(salesDataFile);
+
+  // Print the result, similar to Python's f-string formatting
+  // .toFixed(2) ensures two decimal places for currency.
+  console.log(`Total sales from ${path.basename(salesDataFile)}: $${totalSales.toFixed(2)}`);
+}
+
+main();

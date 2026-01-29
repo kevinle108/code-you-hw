@@ -1,0 +1,146 @@
+using System;
+using System.IO;
+using System.Linq;
+using System.Collections.Generic;
+using System.Globalization;
+
+/// <summary>
+/// Data Model (Equivalent to a dictionary row structure)
+/// </summary>
+public record SalesItem(string ProductName, decimal Price, int Quantity);
+
+/// <summary>
+/// Analyzes sales data from a CSV file.
+/// This class provides functionality to load sales data, calculate total sales,
+/// and identify the top-selling product.
+/// </summary>
+public class SalesAnalyzer
+{
+    private string _filename;
+    private List<SalesItem> _data;
+
+    /// <summary>
+    /// Initializes a new instance of the SalesAnalyzer class with the specified filename.
+    /// </summary>
+    /// <param name="filename">The path to the CSV file containing sales data.</param>
+    public SalesAnalyzer(string filename)
+    {
+        _filename = filename;
+        _data = new List<SalesItem>();
+    }
+
+    /// <summary>
+    /// Loads sales data from the CSV file.
+    /// The CSV file should have columns: product_name, price, quantity.
+    /// Skips the header row and logs any malformed data.
+    /// </summary>
+    /// <returns>True if data was loaded successfully, false otherwise.</returns>
+    public bool LoadData()
+    {
+        try
+        {
+            // Check if file exists
+            if (!File.Exists(_filename))
+            {
+                Console.WriteLine($"Error: The file '{_filename}' was not found.");
+                return false;
+            }
+
+            // Read lines from the file and skip the header row
+            var dataLines = File.ReadLines(_filename).Skip(1);
+
+            // Clear existing data
+            _data.Clear();
+
+            // Process each data line
+            foreach (string line in dataLines)
+            {
+                // Split the line by comma
+                string[] columns = line.Split(',');
+
+                if (columns.Length == 3)
+                {
+                    // Attempt to parse the values using InvariantCulture for consistency
+                    if (decimal.TryParse(columns[1], NumberStyles.Any, CultureInfo.InvariantCulture, out decimal price) &&
+                        int.TryParse(columns[2], out int quantity))
+                    {
+                        _data.Add(new SalesItem(columns[0], price, quantity));
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Skipping malformed data in row: {line}");
+                    }
+                }
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"An unexpected error occurred while loading data: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Calculates the total sales amount from all loaded sales items.
+    /// Total is calculated as the sum of (price × quantity) for each product.
+    /// </summary>
+    /// <returns>The total sales amount as a decimal.</returns>
+    public decimal CalculateTotalSales()
+    {
+        return _data.Sum(item => item.Price * item.Quantity);
+    }
+
+    /// <summary>
+    /// Finds the product with the highest total sales value (price × quantity).
+    /// </summary>
+    /// <returns>The SalesItem with the highest total sales, or null if no data is loaded.</returns>
+    public SalesItem? FindTopProduct()
+    {
+        if (_data.Count == 0)
+        {
+            return null;
+        }
+
+        return _data.OrderByDescending(item => item.Price * item.Quantity).First();
+    }
+
+    /// <summary>
+    /// Main execution block equivalent to Python's 'if __name__ == "__main__":' block.
+    /// Demonstrates the usage of the SalesAnalyzer class.
+    /// </summary>
+    public static void Main(string[] args)
+    {
+        string salesDataFile = "sales_data.csv";
+        
+        // Create a dummy file if it doesn't exist for testing
+        if (!File.Exists(salesDataFile))
+        {
+            File.WriteAllText(salesDataFile, "product_name,price,quantity\nLaptop,1200.00,5\nMouse,25.50,10\nKeyboard,75.99,15\n");
+        }
+
+        // Instantiate the SalesAnalyzer and use its methods
+        SalesAnalyzer analyzer = new SalesAnalyzer(salesDataFile);
+
+        // Load the data
+        if (analyzer.LoadData())
+        {
+            // Calculate and display total sales
+            decimal totalSales = analyzer.CalculateTotalSales();
+            Console.WriteLine($"Total sales from {salesDataFile}: {totalSales.ToString("C", CultureInfo.CurrentCulture)}");
+
+            // Find and display the top product
+            SalesItem? topProduct = analyzer.FindTopProduct();
+            if (topProduct != null)
+            {
+                decimal topProductTotal = topProduct.Price * topProduct.Quantity;
+                Console.WriteLine($"Top product: {topProduct.ProductName} with {topProductTotal.ToString("C", CultureInfo.CurrentCulture)} in sales");
+            }
+        }
+        else
+        {
+            Console.WriteLine("Failed to load sales data.");
+        }
+    }
+}

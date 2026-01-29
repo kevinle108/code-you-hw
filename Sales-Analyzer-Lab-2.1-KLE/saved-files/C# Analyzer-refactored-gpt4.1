@@ -1,0 +1,118 @@
+
+using System;
+using System.IO;
+using System.Linq;
+using System.Globalization;
+using System.Collections.Generic;
+
+/// <summary>
+/// Represents a single sales item with product name, price, and quantity.
+/// </summary>
+public record SalesItem(string ProductName, decimal Price, int Quantity);
+
+/// <summary>
+/// Analyzes sales data from a CSV file, providing methods to load data, calculate total sales, and find the top-selling product.
+/// </summary>
+public class SalesAnalyzer
+{
+    private readonly string _filename;
+    private List<SalesItem> _salesData = new List<SalesItem>();
+
+    /// <summary>
+    /// Initializes the SalesAnalyzer with the path to the sales data CSV file.
+    /// </summary>
+    /// <param name="filename">Path to the CSV file containing sales data.</param>
+    public SalesAnalyzer(string filename)
+    {
+        _filename = filename;
+    }
+
+    /// <summary>
+    /// Loads sales data from the CSV file into memory.
+    /// Skips malformed rows and prints a warning for each.
+    /// </summary>
+    public void LoadData()
+    {
+        _salesData.Clear();
+        try
+        {
+            var dataLines = File.ReadLines(_filename).Skip(1);
+            foreach (string line in dataLines)
+            {
+                string[] columns = line.Split(',');
+                if (columns.Length == 3)
+                {
+                    if (decimal.TryParse(columns[1], NumberStyles.Any, CultureInfo.InvariantCulture, out decimal price) &&
+                        int.TryParse(columns[2], out int quantity))
+                    {
+                        _salesData.Add(new SalesItem(columns[0], price, quantity));
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Skipping malformed data in row: {line}");
+                    }
+                }
+            }
+        }
+        catch (FileNotFoundException)
+        {
+            Console.WriteLine($"Error: The file '{_filename}' was not found.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"An unexpected error occurred: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Calculates the total sales value from the loaded sales data.
+    /// </summary>
+    /// <returns>Total sales as a decimal value.</returns>
+    public decimal CalculateTotalSales()
+    {
+        return _salesData.Sum(item => item.Price * item.Quantity);
+    }
+
+    /// <summary>
+    /// Finds the product with the highest total sales (price * quantity).
+    /// </summary>
+    /// <returns>The SalesItem with the highest total sales, or null if no data.</returns>
+    public SalesItem? FindTopProduct()
+    {
+        if (_salesData.Count == 0) return null;
+        return _salesData.OrderByDescending(item => item.Price * item.Quantity).FirstOrDefault();
+    }
+}
+
+public class Program
+{
+    /// <summary>
+    /// Main execution block. Instantiates SalesAnalyzer, loads data, calculates total sales, and finds the top product.
+    /// </summary>
+    /// <param name="args">Command-line arguments (not used).</param>
+    public static void Main(string[] args)
+    {
+        string salesDataFile = "sales_data.csv";
+
+        // Create a dummy file if it doesn't exist for testing
+        if (!File.Exists(salesDataFile))
+        {
+            File.WriteAllText(salesDataFile, "product_name,price,quantity\nLaptop,1200.00,5\nMouse,25.50,10\n");
+        }
+
+        var analyzer = new SalesAnalyzer(salesDataFile);
+        analyzer.LoadData();
+        decimal totalSales = analyzer.CalculateTotalSales();
+        var topProduct = analyzer.FindTopProduct();
+
+        Console.WriteLine($"Total sales from {salesDataFile}: {totalSales.ToString("C", CultureInfo.CurrentCulture)}");
+        if (topProduct != null)
+        {
+            Console.WriteLine($"Top product: {topProduct.ProductName} (Total: {(topProduct.Price * topProduct.Quantity).ToString("C", CultureInfo.CurrentCulture)})");
+        }
+        else
+        {
+            Console.WriteLine("No sales data available to determine top product.");
+        }
+    }
+}
