@@ -1,5 +1,5 @@
 ---
-description: Copilot instructions: Best Python practices and standards
+description: Copilot instructions - Best Python practices and standards
 # applyTo: '**/*.py'  # when provided, instructions will be automatically added to requests matching .py files
 ---
 
