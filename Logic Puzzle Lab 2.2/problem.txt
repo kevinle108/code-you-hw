@@ -1,0 +1,1 @@
+A farmer needs to transport a fox, a goose, and a bag of grain across a river using a boat that can only hold the farmer and one other item. The fox cannot be left alone with the goose, and the goose cannot be left alone with the grain. The objective is to find a sequence of moves that successfully transports all three items to the other side.
